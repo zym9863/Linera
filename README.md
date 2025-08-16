@@ -1,5 +1,7 @@
 # Linera - 数据结构可视化演示系统
 
+[English version / README-EN.md](README-EN.md)
+
 一个基于 React + Echo 的交互式数据结构学习和演示平台，支持动态数组和链表的可视化操作。
 
 ## 🌟 功能特性
