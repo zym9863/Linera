@@ -41,7 +41,8 @@ const LinkedListManager: React.FC = () => {
   const [operationValue, setOperationValue] = useState<number>(0);
   const [operationIndex, setOperationIndex] = useState<number>(0);
 
-  const API_BASE = 'http://localhost:8080/api';
+  // 使用同源 API 前缀，生产部署与本地开发（通过 Vite 代理）均可用
+  const API_BASE = '/api';
 
   /**
    * 显示消息

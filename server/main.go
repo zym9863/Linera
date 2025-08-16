@@ -17,11 +17,13 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// CORS配置，允许前端访问
+	// CORS配置，允许前端访问（部署到 Render 时允许任意来源，同源访问时无需 CORS）
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:5173", "http://localhost:3000"},
-		AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
+		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		AllowCredentials: true,
+		ExposeHeaders:    []string{"Content-Length"},
 	}))
 
 	// 健康检查端点
@@ -44,16 +46,26 @@ func main() {
 	// 静态文件服务（用于生产环境）
 	// 检查是否存在前端构建文件
 	if _, err := os.Stat("web/dist"); err == nil {
-		// 服务静态文件
-		e.Static("/", "web/dist")
+		// 仅将 /assets 静态资源目录挂载到构建产物，避免与通配符路由冲突
+		e.Static("/assets", "web/dist/assets")
 
-		// SPA路由支持 - 所有非API路由都返回index.html
+		// 根路径直接返回 index.html
+		e.GET("/", func(c echo.Context) error {
+			return c.File("web/dist/index.html")
+		})
+
+		// SPA 路由回退：非 /api 与非静态资源路径统一回到 index.html，由前端路由接管
 		e.GET("/*", func(c echo.Context) error {
-			// 如果请求的是API路径，返回404
-			if len(c.Request().URL.Path) > 4 && c.Request().URL.Path[:4] == "/api" {
+			p := c.Request().URL.Path
+			if len(p) >= 4 && p[:4] == "/api" {
 				return echo.NewHTTPError(http.StatusNotFound, "API endpoint not found")
 			}
-			// 否则返回index.html让前端路由处理
+			if len(p) >= 7 && p[:7] == "/assets" {
+				return echo.NewHTTPError(http.StatusNotFound, "Asset not found")
+			}
+			if p == "/health" {
+				return echo.NewHTTPError(http.StatusNotFound, "Not found")
+			}
 			return c.File("web/dist/index.html")
 		})
 	}
