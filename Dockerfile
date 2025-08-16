@@ -21,10 +21,13 @@ COPY web/ ./
 RUN pnpm build
 
 # 阶段2: 构建后端
-FROM golang:1.21-alpine AS backend-builder
+FROM golang:1.24.6-alpine AS backend-builder
 
 # 安装必要的工具
 RUN apk add --no-cache git
+
+# 启用 go 工具链自动下载，以兼容 go.mod 指定更高版本
+ENV GOTOOLCHAIN=auto
 
 # 设置工作目录
 WORKDIR /app/server
@@ -45,7 +48,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 FROM alpine:latest
 
 # 安装必要的运行时依赖
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata curl
 
 # 设置时区
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
@@ -74,7 +77,7 @@ EXPOSE 8080
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+  CMD curl -fsS http://localhost:8080/health >/dev/null || exit 1
 
 # 启动应用
 CMD ["./main"]
